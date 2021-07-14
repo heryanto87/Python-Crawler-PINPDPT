@@ -10,9 +10,6 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 
-# Default Crawler Settings
-# driver = webdriver.Chrome()
-
 # Headless Crawler Settings
 chrome_options = Options()
 chrome_options.add_argument("--headless")
@@ -448,7 +445,7 @@ def Update():
 '''
 
 
-def validator():
+def Validator():
     # Deklarasi variable yang diperlukan
     sggcView = "VIEW_SGGC_MAPPING_PELAPORAN_MASTER_TRACK_S2"
     periode = "20201"
@@ -469,6 +466,8 @@ def validator():
         cursor.execute("delete from Tbl_PIN_Mahasiswa_Lulusan where no = '" + str(i[0]) + "'")
         cursor.execute("delete from Tbl_PIN_Nomor_Ijazah_Lulusan where no = '" + str(i[0]) + "'")
 
+    print("Press enter to continue...")
+
     conn.commit()
     cursor.close()
 
@@ -478,7 +477,7 @@ def validator():
 '''
 
 
-def upload():
+def Upload():
     # Membuka cursor koneksi
     cursor = conn.cursor()
     cursor.execute("truncate table tbl_nina_dipadankan")
@@ -591,7 +590,7 @@ def upload():
 '''
 
 
-def updateArsip():
+def UpdateArsip():
     # Pindah ke halaman History Arsip PIN
     driver.get("https://pin.kemdikbud.go.id/pin/index.php/historypin")
     cursor = conn.cursor()
@@ -667,7 +666,7 @@ def updateArsip():
 '''
 
 
-def mainmenu():
+def Mainmenu():
     menu = True
 
     while menu:
@@ -685,10 +684,10 @@ def mainmenu():
             index = input("Choose[1-2] : ")
 
             if(index == "1"):
-                updatePINMenu()
+                UpdatePINMenu()
                 choose = False
             elif(index == "2"):
-                uploadPINMenu()
+                UploadPINMenu()
                 choose = False
             elif(index == "3"):
                 choose = False
@@ -700,7 +699,7 @@ def mainmenu():
 '''
 
 
-def updatePINMenu():
+def UpdatePINMenu():
     Homepage()
     system('cls')
     print("===================================")
@@ -720,7 +719,7 @@ def updatePINMenu():
         elif(index == "2"):
             Update()
         elif(index == "3"):
-            validator()
+            Validator()
         elif(index == "4"):
             choose = False
 
@@ -730,7 +729,7 @@ def updatePINMenu():
 '''
 
 
-def uploadPINMenu():
+def UploadPINMenu():
     Homepage()
     system('cls')
     print("===================================")
@@ -745,9 +744,9 @@ def uploadPINMenu():
         index = input("Choose[1-3] : ")
 
         if(index == "1"):
-            upload()
+            Upload()
         elif(index == "2"):
-            updateArsip()
+            UpdateArsip()
         elif(index == "3"):
             choose = False
 
@@ -766,7 +765,7 @@ def uploadPINMenu():
 '''
 Login()
 ##########################
-mainmenu()
+Mainmenu()
 ##########################
 Homepage()
 
