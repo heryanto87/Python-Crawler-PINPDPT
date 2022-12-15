@@ -12,22 +12,23 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 # Headless Crawler Settings
 chrome_options = Options()
-chrome_options.add_argument("--headless")
+# chrome_options.add_argument("--headless")
 chrome_options.add_argument('log-level=3')
+chrome_options.add_argument('window-size=1920x1080')
 chrome_options.add_argument("--start-maximized")
 chrome_options.add_argument(
-    r"C: \Users\62822\Storage\PROJECT-PIN\Asset\Download"
+    r"D:\PROJECT-PIN\Asset\Download"
 )
 prefs = {'download.default_directory':
-         r'C:\Users\62822\Storage\PROJECT-PIN\Asset\Download'}
+         r'D:\PROJECT-PIN\Asset\Download'}
 chrome_options.add_experimental_option('prefs', prefs)
 driver = webdriver.Chrome(options=chrome_options)
-
+driver.set_window_size(1920, 1080)
 driver.get('https://pin.kemdikbud.go.id/pin/index.php/login')
 # driver.get('http://103.56.190.37/pin/')
 
 conn = pyodbc.connect('Driver={SQL Server};'
-                      'Server=10.200.207.171;'
+                      'Server=edm-pdpt.binus.db;'
                       'Database=PDPT_POSTING;'
                       'UID=app_pin;'
                       'PWD=B!4PpP!nNU$;'
@@ -192,7 +193,9 @@ def Reset():
 
 def Update():
     # Pindah ke page reservasi
-    driver.get("https://pin.kemdikbud.go.id/pin/index.php/prodi")
+    # driver.get("https://pin.kemdikbud.go.id/pin/index.php/prodi")
+    reservation_xpath = "/html/body/div[1]/div/div[3]/div/div[2]/div[1]/form/button"
+    ClickXPATH(reservation_xpath, 10)
 
     # Input tahun wisuda
     grad_year = input("[INPUT] Graduation Year : ")
@@ -204,7 +207,7 @@ def Update():
     FINAL_NINA_TABLE = "Tbl_PIN_Nomor_Ijazah_Lulusan"
     FINAL_HPIN_TABLE = "HTbl_PIN_Mahasiswa_Lulusan"
     FINAL_HNINA_TABLE = "HTbl_PIN_Nomor_Ijazah_Lulusan"
-    wisuda = "63"
+    wisuda = input("[INPUT] Wisuda : ")
 
     # Deklarasi cursor ke database dan tablenya
     cursor = conn.cursor()
@@ -255,11 +258,11 @@ def Update():
             continue
 
         # 2
-        sleep(1)
+        sleep(1.5)
         try:
             graduationXPATH = "//input[@type='number']"
             SendXPATH(graduationXPATH, 10, grad_year)
-            pilihXPath = "//form[@class='form-inline text-center']//button[@class='btn btn-primary'][contains(text(),'Pilih')]"
+            pilihXPath = "//form[@class='form-inline text-center']//button[@class='btn btn-primary'][contains(text(),'Submit')]"
             ClickXPATH(pilihXPath, 10)
         except Exception:
             backXPath = "/html/body/div[1]/div/div[3]/div/div[1]/div/a"
@@ -268,7 +271,7 @@ def Update():
 
         # 3
         # NOT EG
-        sleep(1)
+        sleep(1.5)
         print("[INFO] Start Processing Not Eligible Data")
         notEligibleData = ""
         notEligibleTableNextXPATH = "//li[@id='DataTables_Table_0_next']//a[contains(text(),'Selanjutnya')]"
@@ -448,12 +451,12 @@ def Update():
 def Validator():
     # Deklarasi variable yang diperlukan
     sggcView = "VIEW_SGGC_MAPPING_PELAPORAN_MASTER_TRACK_S2"
-    periode = "20201"
+    periode = "20202"
     cursor = conn.cursor()
 
     # Mengambil data dari database
     cursor.execute("select [no] from Tbl_PIN_Mahasiswa_Lulusan where NIM in (select external_system_id from " +
-                   sggcView + " where periode_mata_kuliah_dilaporkan = '" + periode + "')")
+                   sggcView + " where coalesce(periode_mata_kuliah_dilaporkan,'') in ('', '" + periode + "'))")
     dataIdx = cursor.fetchall()
 
     # Looping validasi dari view SGGC
@@ -529,10 +532,13 @@ def Upload():
     # Mengupload file satu per satu
     tggl_log = input("[INPUT] Start Tanggal [YYYY-MM-DD] : ")
     log_query = "select kodeProdi from PIN_UPLOAD_LOG where TanggalLog >= '" +  \
-        tggl_log + "' and TanggalLog <= DATEADD(DAY, 1, '" + tggl_log + "')"
+        tggl_log + "' and TanggalLog <= DATEADD(DAY, 1, '" + tggl_log + "') order by kodeProdi"
     cursor.execute(log_query)
     prod_list = cursor.fetchall()
     print("Total Rows : ", len(prod_list))
+
+    upload_XPATH = "/html/body/div[1]/div/div[3]/div/div[2]/div[2]/form/button"
+    ClickXPATH(upload_XPATH, 10)
 
     for i in prod_list:
         cursor.execute("exec EXPORTPRODI ?", i[0])
@@ -561,13 +567,14 @@ def Upload():
         writer.save()
 
         # Upload
-        driver.get("https://pin.kemdikbud.go.id/pin/index.php/prodi/")
 
         search_XPATH = "//input[contains(@placeholder,'Ketik Kata Kunci')]"
         SendXPATH(search_XPATH, 10, i[0])
 
-        ClickXPATH(
-            "/html/body/div[1]/div/div[3]/div[1]/div[2]/div/div/div/div[2]/div/div/div[2]/div/table/tbody/tr[1]/td[4]/form/input[5]", 10)
+        try :
+            ClickXPATH("/html/body/div[1]/div/div[3]/div[1]/div[2]/div/div/div/div[2]/div/div/div[2]/div/table/tbody/tr[1]/td[4]/form/input[5]", 10)
+        except :
+            continue
 
         upload_XPATH = "/html/body/div[1]/div/div[3]/div/div[2]/div/div/div/div[2]/form/input[9]"
         submit_XPATH = "/html/body/div[1]/div/div[3]/div/div[2]/div/div/div/div[2]/form/input[10]"
@@ -576,10 +583,14 @@ def Upload():
 
         file_path = os.path.abspath(r'Asset/Prodi/PIN-Template.xlsx')
 
-        driver.find_element_by_xpath(upload_XPATH).send_keys(file_path)
-        ClickXPATH(submit_XPATH, 10)
-        ClickXPATH(pasang_XPATH, 10)
-        ClickXPATH(back_XPATH, 10)
+        sleep(5)
+        try :
+            driver.find_element_by_xpath(upload_XPATH).send_keys(file_path)
+            ClickXPATH(submit_XPATH, 10)
+            ClickXPATH(pasang_XPATH, 10)
+            ClickXPATH(back_XPATH, 120)
+        except:
+            continue
 
     conn.commit()
     cursor.close()
@@ -681,7 +692,7 @@ def Mainmenu():
 
         choose = True
         while choose:
-            index = input("Choose[1-2] : ")
+            index = input("Choose[1-3] : ")
 
             if(index == "1"):
                 UpdatePINMenu()
@@ -707,20 +718,20 @@ def UpdatePINMenu():
     print("===================================")
     print("1. Reset PIN")
     print("2. Update PIN")
-    print("3. Validate PIN")
-    print("4. Back")
+    #print("3. Validate PIN")
+    print("3. Back")
 
     choose = True
     while choose:
-        index = input("Choose[1-5] : ")
+        index = input("Choose[1-3] : ")
 
         if(index == "1"):
             Reset()
         elif(index == "2"):
             Update()
+        #elif(index == "3"):
+        #    Validator()
         elif(index == "3"):
-            Validator()
-        elif(index == "4"):
             choose = False
 
 
@@ -737,7 +748,7 @@ def UploadPINMenu():
     print("===================================")
     print("1. Upload PIN")
     print("2. Update Arsip")
-    print("2. Back")
+    print("3. Back")
 
     choose = True
     while choose:
