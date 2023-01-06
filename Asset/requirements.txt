@@ -5,3 +5,5 @@ xlrd
 openpyxl
 xlsxwriter
 pandas
+schedule
+configparser

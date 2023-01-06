@@ -1,14 +1,21 @@
+from math import atanh
+from operator import truediv
 import os
+from unicodedata import name
 import pyodbc
 import pandas as pd
 from openpyxl import load_workbook
 from os import system
 from time import sleep
-from datetime import datetime
+from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
+import schedule
+import time
+import configparser
+import pathlib
 
 # Headless Crawler Settings
 chrome_options = Options()
@@ -669,6 +676,99 @@ def UpdateArsip():
 
     cursor.close()
 
+'''
+# Scheduler Modules
+'''
+def ReadConfig():
+    Config = configparser.ConfigParser()
+    Config.read(str(pathlib.Path(__file__).parent.resolve()) + '/config.ini')
+
+    return Config
+
+def ConfigSectionMap(section):
+    Config = ReadConfig()
+    dict1 = {}
+    options = Config.options(section)
+    for option in options:
+        try:
+            dict1[option] = Config.get(section, option)
+            # if dict1[option] == -1:
+            #     DebugPrint("skip: %s" % option)
+        except:
+            print("exception on %s!" % option)
+            dict1[option] = None
+    return dict1
+    
+def at_day(job, day_name):
+    day_name = day_name.lower()
+    if day_name == "monday":
+        return job.monday
+    if day_name == "tuesday":
+        return job.tuesday
+    if day_name == "wednesday":
+        return job.wednesday
+    if day_name == "thursday":
+        return job.thursday
+    if day_name == "friday":
+        return job.friday
+    if day_name == "saturday":
+        return job.saturday
+    if day_name == "sunday":
+        return job.sunday
+    raise Exception("Unknown name of day")
+
+def Job():
+    print("Running the reset job")
+    Reset()
+    print("Running the reset job")
+    Update()
+
+def RunScheduler():
+    userday = ConfigSectionMap("Scheduler")['day']
+    usertime = ConfigSectionMap("Scheduler")['time']
+
+    if userday == None or usertime == None:
+        print("Warning: You need to setup scheduler configuration first")
+        input("Press Enter to continue...")
+        Mainmenu(False)
+        return
+
+    job = at_day(schedule.every(), userday).at(usertime).do(Job)
+
+    while True:
+        system('cls')
+        print("===================================")
+        print("Running scheduler")
+        print("===================================")
+        print(f"Scheduler is set to run every {userday} at {usertime}")
+        print(f"Next run: {job.next_run}")    
+        print(f"Time remaining: {str(timedelta(seconds=schedule.idle_seconds()))}")
+        print("\nWaiting for the next execution..")
+        
+        schedule.run_pending()
+        time.sleep(1)
+
+def EditScheduler():
+    system('cls')
+    print("===================================")
+    print("Edit scheduler")
+    print("===================================")
+
+    userday = input("When do you want the execute the job? [monday]: ")
+    usertime = input("What time? [HH:SS]: ")
+
+    Config = ReadConfig()
+    Config.add_section('Scheduler')
+    Config.set('Scheduler', 'day', userday)
+    Config.set('Scheduler', 'time', usertime)
+
+    with open(str(pathlib.Path(__file__).parent.resolve()) + '/config.ini', 'w') as configfile: 
+        Config.write(configfile)
+
+    print("Configuration set!")
+    input("Press Enter to continue...")
+    Mainmenu(False)
+
 
 '''
 ####################################################################################################
@@ -676,23 +776,24 @@ def UpdateArsip():
 ####################################################################################################
 '''
 
-
-def Mainmenu():
+def Mainmenu(homepage = True):
     menu = True
 
     while menu:
-        Homepage()
+        if homepage: Homepage()
         system('cls')
         print("===================================")
         print("PIN Crawler")
         print("===================================")
         print("1. Update PIN")
         print("2. Upload PIN")
-        print("3. Exit")
+        print("3. Run Scheduler")
+        print("4. Edit Scheduler")
+        print("5. Exit")
 
         choose = True
         while choose:
-            index = input("Choose[1-3] : ")
+            index = input("Choose[1-5] : ")
 
             if(index == "1"):
                 UpdatePINMenu()
@@ -701,6 +802,12 @@ def Mainmenu():
                 UploadPINMenu()
                 choose = False
             elif(index == "3"):
+                RunScheduler()
+                choose = False
+            elif(index == "4"):
+                EditScheduler()
+                choose = False
+            elif(index == "5"):
                 choose = False
                 menu = False
 
@@ -708,7 +815,6 @@ def Mainmenu():
 '''
 # Print menu untuk operasi Update PIN
 '''
-
 
 def UpdatePINMenu():
     Homepage()
