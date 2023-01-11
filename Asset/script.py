@@ -12,6 +12,7 @@ from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
+from webdriver_manager.chrome import ChromeDriverManager
 import schedule
 import time
 import configparser
@@ -29,7 +30,7 @@ chrome_options.add_argument(
 prefs = {'download.default_directory':
          r'D:\PROJECT-PIN\Asset\Download'}
 chrome_options.add_experimental_option('prefs', prefs)
-driver = webdriver.Chrome(options=chrome_options)
+driver = webdriver.Chrome(ChromeDriverManager().install(),options=chrome_options)
 driver.set_window_size(1920, 1080)
 driver.get('https://pin.kemdikbud.go.id/pin/index.php/login')
 # driver.get('http://103.56.190.37/pin/')

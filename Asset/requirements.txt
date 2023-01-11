@@ -7,3 +7,4 @@ xlsxwriter
 pandas
 schedule
 configparser
+webdriver-manager
