@@ -24,13 +24,17 @@ chrome_options = Options()
 chrome_options.add_argument('log-level=3')
 chrome_options.add_argument('window-size=1920x1080')
 chrome_options.add_argument("--start-maximized")
+chrome_options.add_argument("--no-sandbox");
+chrome_options.add_argument("--disable-extensions");
+chrome_options.add_argument("--dns-prefetch-disable");
+chrome_options.add_argument("--disable-gpu");
 chrome_options.add_argument(
     r"D:\PROJECT-PIN\Asset\Download"
 )
 prefs = {'download.default_directory':
          r'D:\PROJECT-PIN\Asset\Download'}
 chrome_options.add_experimental_option('prefs', prefs)
-driver = webdriver.Chrome(ChromeDriverManager().install(),options=chrome_options)
+driver = webdriver.Chrome(ChromeDriverManager().install(), options=chrome_options)
 driver.set_window_size(1920, 1080)
 driver.get('https://pin.kemdikbud.go.id/pin/index.php/login')
 # driver.get('http://103.56.190.37/pin/')
@@ -199,14 +203,15 @@ def Reset():
 '''
 
 
-def Update():
+def Update(grad_year = None, wisuda = None):
     # Pindah ke page reservasi
     # driver.get("https://pin.kemdikbud.go.id/pin/index.php/prodi")
     reservation_xpath = "/html/body/div[1]/div/div[3]/div/div[2]/div[1]/form/button"
     ClickXPATH(reservation_xpath, 10)
 
     # Input tahun wisuda
-    grad_year = input("[INPUT] Graduation Year : ")
+    if grad_year is None:
+        grad_year = input("[INPUT] Graduation Year : ")
 
     # Deklarasi variable yang diperlukan
     FINAL_NOT_EG_TABLE = "NOT_EG_PIN"
@@ -215,7 +220,9 @@ def Update():
     FINAL_NINA_TABLE = "Tbl_PIN_Nomor_Ijazah_Lulusan"
     FINAL_HPIN_TABLE = "HTbl_PIN_Mahasiswa_Lulusan"
     FINAL_HNINA_TABLE = "HTbl_PIN_Nomor_Ijazah_Lulusan"
-    wisuda = input("[INPUT] Wisuda : ")
+
+    if wisuda is None:
+        wisuda = input("[INPUT] Wisuda : ")
 
     # Deklarasi cursor ke database dan tablenya
     cursor = conn.cursor()
@@ -719,10 +726,13 @@ def at_day(job, day_name):
     raise Exception("Unknown name of day")
 
 def Job():
+    gradyear = ConfigSectionMap("Update")['gradyear']
+    wisuda = ConfigSectionMap("Update")['wisuda']
+
     print("Running the reset job")
     Reset()
-    print("Running the reset job")
-    Update()
+    print("Running the update job")
+    Update(gradyear, wisuda)
 
 def RunScheduler():
     userday = ConfigSectionMap("Scheduler")['day']
@@ -757,11 +767,17 @@ def EditScheduler():
 
     userday = input("When do you want the execute the job? [monday]: ")
     usertime = input("What time? [HH:SS]: ")
+    gradyear = input("Graduation year for update [YYYY]: ")
+    wisuda = input("Wisuda [1-100]: ")
 
     Config = ReadConfig()
     Config.add_section('Scheduler')
     Config.set('Scheduler', 'day', userday)
     Config.set('Scheduler', 'time', usertime)
+
+    Config.add_section('Update')
+    Config.set('Update', 'gradyear', gradyear)
+    Config.set('Update', 'wisuda', wisuda)
 
     with open(str(pathlib.Path(__file__).parent.resolve()) + '/config.ini', 'w') as configfile: 
         Config.write(configfile)
@@ -805,7 +821,7 @@ def Mainmenu(homepage = True):
             elif(index == "3"):
                 RunScheduler()
                 choose = False
-            elif(index == "4"):
+            elif(   index == "4"):
                 EditScheduler()
                 choose = False
             elif(index == "5"):
