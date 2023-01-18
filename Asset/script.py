@@ -34,7 +34,8 @@ chrome_options.add_argument(
 prefs = {'download.default_directory':
          r'D:\PROJECT-PIN\Asset\Download'}
 chrome_options.add_experimental_option('prefs', prefs)
-driver = webdriver.Chrome(ChromeDriverManager().install(), options=chrome_options)
+
+driver = webdriver.Chrome(executable_path=ChromeDriverManager().install(), options=chrome_options)
 driver.set_window_size(1920, 1080)
 driver.get('https://pin.kemdikbud.go.id/pin/index.php/login')
 # driver.get('http://103.56.190.37/pin/')
@@ -292,7 +293,7 @@ def Update(grad_year = None, wisuda = None):
         notEligibleTableNextXPATH = "//li[@id='DataTables_Table_0_next']//a[contains(text(),'Selanjutnya')]"
         notEligibleDisableNextXPath = "//li[@class='paginate_button next disabled' and @id='DataTables_Table_0_next']"
         tBodyXPATH = "//table[@id='DataTables_Table_0']//tbody"
-        notEligibleTableNextButton = GetXPATHElement(notEligibleTableNextXPATH, 10)
+        notEligibleTableNextButton = GetXPATHElement(notEligibleTableNextXPATH, 180)
 
         sleep(1)
         while True:
@@ -301,7 +302,7 @@ def Update(grad_year = None, wisuda = None):
 
             if len(driver.find_elements_by_xpath(notEligibleDisableNextXPath)) == 0:
                 notEligibleTableNextButton.click()
-                notEligibleTableNextButton = GetXPATHElement(notEligibleTableNextXPATH, 10)
+                notEligibleTableNextButton = GetXPATHElement(notEligibleTableNextXPATH, 180)
             else:
                 break
 
@@ -771,11 +772,13 @@ def EditScheduler():
     wisuda = input("Wisuda [1-100]: ")
 
     Config = ReadConfig()
-    Config.add_section('Scheduler')
+    if not Config.has_section('Scheduler'):
+        Config.add_section('Scheduler')
     Config.set('Scheduler', 'day', userday)
     Config.set('Scheduler', 'time', usertime)
 
-    Config.add_section('Update')
+    if not Config.has_section('Update'):
+        Config.add_section('Update')
     Config.set('Update', 'gradyear', gradyear)
     Config.set('Update', 'wisuda', wisuda)
 
