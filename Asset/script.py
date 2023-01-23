@@ -14,9 +14,9 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 import schedule
-import time
 import configparser
 import pathlib
+import keyboard
 
 # Headless Crawler Settings
 chrome_options = Options()
@@ -154,7 +154,7 @@ def ProgressBar(iteration, total, prefix='', suffix='', decimals=1, length=100, 
 '''
 
 
-def Reset():
+def Reset(skipEnterKey = False):
     # Menuju list data Arsip Reservasi
     driver.get("https://pin.kemdikbud.go.id/pin/index.php/history")
 
@@ -196,7 +196,8 @@ def Reset():
 
     except Exception:
         print("No Data...")
-        input("Press Enter to Continue...")
+        if not skipEnterKey:
+            input("Press Enter to Continue...")
 
 
 '''
@@ -730,9 +731,19 @@ def Job():
     gradyear = ConfigSectionMap("Update")['gradyear']
     wisuda = ConfigSectionMap("Update")['wisuda']
 
+    print("Checking login session")
+    driver.get('https://pin.kemdikbud.go.id/pin/index.php/login')
+    buttonXPATH = "//button[@class='btn-login btn-primary-login block-login full-width-login m-b']"
+    loginStatus = GetXPATHElements(buttonXPATH)
+    print("Login status: ", loginStatus)
+    if len(GetXPATHElements(buttonXPATH)) > 0:
+        print("Logging in..")
+        Login()   
+    
     print("Running the reset job")
-    Reset()
+    Reset(skipEnterKey = True)
     print("Running the update job")
+    Homepage()
     Update(gradyear, wisuda)
 
 def RunScheduler():
@@ -755,10 +766,15 @@ def RunScheduler():
         print(f"Scheduler is set to run every {userday} at {usertime}")
         print(f"Next run: {job.next_run}")    
         print(f"Time remaining: {str(timedelta(seconds=schedule.idle_seconds()))}")
-        print("\nWaiting for the next execution..")
+        print("\nWaiting for the next execution.. (Press `c` to cancel)")
+        if keyboard.is_pressed("c"):            
+            schedule.clear()
+            print("Aborting job..")
+            break
         
         schedule.run_pending()
-        time.sleep(1)
+        sleep(1)
+
 
 def EditScheduler():
     system('cls')
@@ -830,6 +846,9 @@ def Mainmenu(homepage = True):
             elif(index == "5"):
                 choose = False
                 menu = False
+            elif(index == "6"):
+                Job()
+                choose = False
 
 
 '''
