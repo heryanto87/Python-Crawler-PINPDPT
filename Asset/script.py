@@ -12,6 +12,7 @@ from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
 import schedule
 import configparser
@@ -82,12 +83,19 @@ def SelectCSS(cssSelector, wait):
     return element
 
 
-def GetXPATHElement(xPATH, wait):
-    element = WebDriverWait(driver, wait).until(
-        lambda driver: driver.find_element_by_xpath(xPATH)
-    )
-    return element
+def GetXPATHElement(xPATH, wait, attempt=0, max_attempt=5):
+    try:
+        element = WebDriverWait(driver, wait).until(
+            lambda driver: driver.find_element_by_xpath(xPATH)
+        )
 
+        return element
+    except TimeoutException:
+        if attempt < max_attempt:
+            print(f"Failed to get XPathElement {xPATH}, trying again..")
+            return GetXPATHElement(xPATH, wait, attempt+1)
+        else:
+            raise Exception("[ERROR] Max attempt exceeded")
 
 def GetXPATHElements(xPATH):
     elements = driver.find_elements_by_xpath(xPATH)
@@ -294,7 +302,7 @@ def Update(grad_year = None, wisuda = None):
         notEligibleTableNextXPATH = "//li[@id='DataTables_Table_0_next']//a[contains(text(),'Selanjutnya')]"
         notEligibleDisableNextXPath = "//li[@class='paginate_button next disabled' and @id='DataTables_Table_0_next']"
         tBodyXPATH = "//table[@id='DataTables_Table_0']//tbody"
-        notEligibleTableNextButton = GetXPATHElement(notEligibleTableNextXPATH, 180)
+        notEligibleTableNextButton = GetXPATHElement(notEligibleTableNextXPATH, 240)
 
         sleep(1)
         while True:
@@ -303,7 +311,7 @@ def Update(grad_year = None, wisuda = None):
 
             if len(driver.find_elements_by_xpath(notEligibleDisableNextXPath)) == 0:
                 notEligibleTableNextButton.click()
-                notEligibleTableNextButton = GetXPATHElement(notEligibleTableNextXPATH, 180)
+                notEligibleTableNextButton = GetXPATHElement(notEligibleTableNextXPATH, 240)
             else:
                 break
 
