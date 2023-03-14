@@ -12,8 +12,10 @@ from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.chrome.service import Service
 from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
+
 import schedule
 import configparser
 import pathlib
@@ -21,24 +23,25 @@ import keyboard
 
 # Headless Crawler Settings
 chrome_options = Options()
+# chrome_options.headless = True
 # chrome_options.add_argument("--headless")
 chrome_options.add_argument('log-level=3')
-chrome_options.add_argument('window-size=1920x1080')
+chrome_options.add_argument('window-size=1920,1080')
 chrome_options.add_argument("--start-maximized")
 chrome_options.add_argument("--no-sandbox");
-chrome_options.add_argument("--disable-extensions");
-chrome_options.add_argument("--dns-prefetch-disable");
-chrome_options.add_argument("--disable-gpu");
+chrome_options.add_argument("--disable-extensions")
 chrome_options.add_argument(
     r"D:\PROJECT-PIN\Asset\Download"
 )
 prefs = {'download.default_directory':
          r'D:\PROJECT-PIN\Asset\Download'}
 chrome_options.add_experimental_option('prefs', prefs)
-
-driver = webdriver.Chrome(executable_path=ChromeDriverManager().install(), options=chrome_options)
+install = ChromeDriverManager().install()
+print(install)
+driver = webdriver.Chrome(service=Service(install), options=chrome_options)
 driver.set_window_size(1920, 1080)
 driver.get('https://pin.kemdikbud.go.id/pin/index.php/login')
+
 # driver.get('http://103.56.190.37/pin/')
 
 conn = pyodbc.connect('Driver={SQL Server};'
@@ -56,56 +59,53 @@ conn = pyodbc.connect('Driver={SQL Server};'
 '''
 
 
-def ClickXPATH(xPATH, wait):
+def ClickXPATH(xPATH, wait = 60):
     try:
-        button = WebDriverWait(driver, 10).until(
-            lambda driver: driver.find_element_by_xpath(xPATH))
+        button = WebDriverWait(driver, wait).until(
+            lambda driver: driver.find_element("xpath", xPATH))
+        driver.execute_script("arguments[0].scrollIntoView(true);", button)
         button.click()
         return True
-    except Exception:
+    except Exception as err:
         return False
 
 
-def SendXPATH(xPATH, wait, text):
+def SendXPATH(xPATH, text, wait = 60):
     try:
-        element = WebDriverWait(driver, 10).until(
-            lambda driver: driver.find_element_by_xpath(xPATH))
+        element = WebDriverWait(driver, wait).until(
+            lambda driver: driver.find_element("xpath", xPATH))
+        driver.execute_script("arguments[0].scrollIntoView(true);", element)
         element.clear()
         element.send_keys(text)
         return True
-    except Exception:
+    except Exception as err:
         return False
 
 
-def SelectCSS(cssSelector, wait):
-    element = WebDriverWait(driver, 10).until(
-        lambda driver: driver.find_elements_by_css_selector(cssSelector))
+def SelectCSS(cssSelector, wait = 60):
+    element = WebDriverWait(driver, wait).until(
+        lambda driver: driver.find_elements("css selector", cssSelector))
     return element
 
 
-def GetXPATHElement(xPATH, wait, attempt=0, max_attempt=5):
-    try:
-        element = WebDriverWait(driver, wait).until(
-            lambda driver: driver.find_element_by_xpath(xPATH)
-        )
+def GetXPATHElement(xPATH, wait = 60):
+    element = WebDriverWait(driver, wait).until(
+        lambda driver: driver.find_element("xpath", xPATH)
+    )
 
-        return element
-    except TimeoutException:
-        if attempt < max_attempt:
-            print(f"Failed to get XPathElement {xPATH}, trying again..")
-            return GetXPATHElement(xPATH, wait, attempt+1)
-        else:
-            raise Exception("[ERROR] Max attempt exceeded")
+    return element
 
-def GetXPATHElements(xPATH):
-    elements = driver.find_elements_by_xpath(xPATH)
+def GetXPATHElements(xPATH):    
+    elements = driver.find_elements("xpath", xPATH)
     return elements
 
+def GetCSSElements(cssSelector):
+    elements = driver.find_elements("css selector", cssSelector)
+    return elements
 
 def Homepage():
     # driver.get('http://103.56.190.37/pin/index.php/home/batal')
     driver.get('https://pin.kemdikbud.go.id/pin/index.php/home/batal')
-
 
 def Login():
     user = "031038"
@@ -114,13 +114,18 @@ def Login():
     passwordXPATH = "//input[@placeholder='Masukan Password Anda']"
     buttonXPATH = "//button[@class='btn-login btn-primary-login block-login full-width-login m-b']"
 
-    SendXPATH(usernameXPATH, 10, user)
-    SendXPATH(passwordXPATH, 10, password)
+    try:
+        GetXPATHElement(usernameXPATH)
+        SendXPATH(usernameXPATH, user)
+        SendXPATH(passwordXPATH, password)
 
-    if ClickXPATH(buttonXPATH, 10) is True:
-        print("[INFO]: Login Success")
-    else:
-        print("[INFO]: Login Failed")
+        if ClickXPATH(buttonXPATH) is True:
+            print("[INFO]: Login Success")
+        else:
+            raise Exception("[INFO]: Login Failed")
+    except TimeoutException:
+        print("[INFO] Already logged in")
+        pass 
 
 
 '''
@@ -169,14 +174,15 @@ def Reset(skipEnterKey = False):
     # Mengambil data jumlah reservasi di list table
     print("[INFO]: Count Reserved Program")
     view_XPATH = "//select[@name='DataTables_Table_0_length']/option[text()='100']"
-    ClickXPATH(view_XPATH, 10)
+    ClickXPATH(view_XPATH)
     search_XPATH = "//input[contains(@placeholder,'Ketik Kata Kunci')]"
-    SendXPATH(search_XPATH, 10, "BELUM")
+    SendXPATH(search_XPATH, "BELUM")
+    button_length = 0
 
     # Memulai progress Reset pada reservasi
     try:
         button_css = ".btn.btn-danger"
-        buttons = SelectCSS(button_css, 10)
+        buttons = SelectCSS(button_css, 5)
         button_length = len(buttons)
         print("[INFO]: Reset is on progress")
 
@@ -190,19 +196,20 @@ def Reset(skipEnterKey = False):
                 i += 1
 
             view_XPATH = "//select[@name='DataTables_Table_0_length']/option[text()='100']"
-            ClickXPATH(view_XPATH, 10)
+            ClickXPATH(view_XPATH)
             search_XPATH = "//input[contains(@placeholder,'Ketik Kata Kunci')]"
-            SendXPATH(search_XPATH, 10, "BELUM")
-            buttons_left = SelectCSS(button_css, 10)
+            SendXPATH(search_XPATH, "BELUM")
+            buttons_left = SelectCSS(button_css)
 
             if len(buttons_left) < 1:
                 break
 
             reset_XPATH = "//button[contains(@class,'btn btn-danger')]"
-            while ClickXPATH(reset_XPATH, 10) is True:
+            while ClickXPATH(reset_XPATH, 5) is True:
                 continue
 
-    except Exception:
+    except TimeoutException:
+        ProgressBar(1, 1, prefix='Progress:', suffix='Complete', length=50)
         print("No Data...")
         if not skipEnterKey:
             input("Press Enter to Continue...")
@@ -217,7 +224,7 @@ def Update(grad_year = None, wisuda = None):
     # Pindah ke page reservasi
     # driver.get("https://pin.kemdikbud.go.id/pin/index.php/prodi")
     reservation_xpath = "/html/body/div[1]/div/div[3]/div/div[2]/div[1]/form/button"
-    ClickXPATH(reservation_xpath, 10)
+    ClickXPATH(reservation_xpath)
 
     # Input tahun wisuda
     if grad_year is None:
@@ -230,12 +237,14 @@ def Update(grad_year = None, wisuda = None):
     FINAL_NINA_TABLE = "Tbl_PIN_Nomor_Ijazah_Lulusan"
     FINAL_HPIN_TABLE = "HTbl_PIN_Mahasiswa_Lulusan"
     FINAL_HNINA_TABLE = "HTbl_PIN_Nomor_Ijazah_Lulusan"
+    SP_BACKUP = "SPBackUpTablePIN"
 
     if wisuda is None:
         wisuda = input("[INPUT] Wisuda : ")
 
     # Deklarasi cursor ke database dan tablenya
-    cursor = conn.cursor()
+    cursor = conn.cursor()     
+    print("[INFO] Clearing tables")
     cursor.execute("TRUNCATE TABLE " + FINAL_NOT_EG_TABLE)
     cursor.execute("TRUNCATE TABLE " + FINAL_PIN_TABLE)
     cursor.execute("TRUNCATE TABLE " + FINAL_NINA_TABLE)
@@ -244,9 +253,9 @@ def Update(grad_year = None, wisuda = None):
     print("[INFO] Preparing Table")
     viewXPath = "//select[@name='DataTables_Table_0_length']/option[text()='100']"
     chooseTableCSS = ".btn.btn-xs.btn-block.btn-primary"
-    ClickXPATH(viewXPath, 10)
+    ClickXPATH(viewXPath)
     sleep(2)
-    button = SelectCSS(chooseTableCSS, 10)
+    button = SelectCSS(chooseTableCSS)
     buttonLength = len(button)
 
     # Deklarasi Variable tambahan untuk adaptasi crawler dengan web PIN
@@ -258,40 +267,55 @@ def Update(grad_year = None, wisuda = None):
 
     # Operasi berdasarkan flow bisnis yang dikerjakan secara manual
     while i != buttonLength:
+        # titleXPath = '//*[@id="page-wrapper"]/div[3]/div[1]/div[2]/div/div/div/div[1]/h2/strong'
+        # title = GetXPATHElement(titleXPath).text
         viewXPath = "//select[@name='DataTables_Table_0_length']/option[text()='100']"
-        ClickXPATH(viewXPath, 10)
+        if ClickXPATH(viewXPath) == False:
+            driver.get("https://pin.kemdikbud.go.id/pin/index.php/prodi")
+            ClickXPATH(backXPath)
+            continue
+
         sleep(2)
 
         kodeProdiXPath = "/html/body/div[1]/div/div[3]/div[1]/div[2]/div/div/div/div[2]/div/div/div[2]/div/table/tbody/tr[" + str(
             i + 1) + "]/td[2]"
         namaProdiXPath = "/html/body/div[1]/div/div[3]/div[1]/div[2]/div/div/div/div[2]/div/div/div[2]/div/table/tbody/tr[" + str(
             i + 1) + "]/td[3]"
-        kodeProdi = GetXPATHElement(kodeProdiXPath, 10).text
-        namaProdi = GetXPATHElement(namaProdiXPath, 10).text
+        backXPath = '//*[@id="page-wrapper"]/div[3]/div[1]/div[1]/div/a[1]'
+        kodeProdi = GetXPATHElement(kodeProdiXPath).text
+        namaProdi = GetXPATHElement(namaProdiXPath).text
         print("")
         print("[INFO] Prodi = ", end=" ")
         print(i + 1, end=". ")
         print(kodeProdi, end=" - ")
         print(namaProdi)
 
+    
         # 1
-        sleep(1)
+        sleep(2)
         try:
-            operationButton = driver.find_elements_by_css_selector(chooseTableCSS)
+            operationButton = SelectCSS(chooseTableCSS) 
             operationButton[skipIdx].click()
-        except Exception:
+        except TimeoutException:
+            print(f"[WARNING] Could not find (step 1): {chooseTableCSS}")
+            ClickXPATH(backXPath)            
             continue
 
         # 2
         sleep(1.5)
         try:
             graduationXPATH = "//input[@type='number']"
-            SendXPATH(graduationXPATH, 10, grad_year)
-            pilihXPath = "//form[@class='form-inline text-center']//button[@class='btn btn-primary'][contains(text(),'Submit')]"
-            ClickXPATH(pilihXPath, 10)
-        except Exception:
-            backXPath = "/html/body/div[1]/div/div[3]/div/div[1]/div/a"
-            ClickXPATH(backXPath, 10)
+            SendXPATH(graduationXPATH, grad_year)
+            if graduationXPATH:
+                print(f"[INFO] graduationXPATH OK")
+            # pilihXPath = "//form[@class='form-inline text-center']//button[@class='btn btn-primary'][contains(text(),'Submit')]"
+            pilihXPath = '//*[@id="page-wrapper"]/div[3]/div/div[2]/div/div/div/div[2]/form/button'
+            ClickXPATH(pilihXPath)
+            if pilihXPath:
+                print(f"[INFO] pilihXPath OK")
+        except TimeoutException:
+            print(f"[WARNING] Could not find (step 2): {pilihXPath}")
+            ClickXPATH(backXPath)
             continue
 
         # 3
@@ -302,16 +326,22 @@ def Update(grad_year = None, wisuda = None):
         notEligibleTableNextXPATH = "//li[@id='DataTables_Table_0_next']//a[contains(text(),'Selanjutnya')]"
         notEligibleDisableNextXPath = "//li[@class='paginate_button next disabled' and @id='DataTables_Table_0_next']"
         tBodyXPATH = "//table[@id='DataTables_Table_0']//tbody"
-        notEligibleTableNextButton = GetXPATHElement(notEligibleTableNextXPATH, 240)
+
+        try:
+            notEligibleTableNextButton = GetXPATHElement(notEligibleTableNextXPATH)
+        except TimeoutException as err:
+            print(f"[WARNING] Could not find (step 3): {notEligibleTableNextXPATH}")
+            ClickXPATH(backXPath)
+            continue
 
         sleep(1)
         while True:
-            tBodyElement = GetXPATHElement(tBodyXPATH, 10)
+            tBodyElement = GetXPATHElement(tBodyXPATH)
             notEligibleData += tBodyElement.get_attribute("innerHTML")
 
-            if len(driver.find_elements_by_xpath(notEligibleDisableNextXPath)) == 0:
+            if len(GetXPATHElements(notEligibleDisableNextXPath)) == 0:
                 notEligibleTableNextButton.click()
-                notEligibleTableNextButton = GetXPATHElement(notEligibleTableNextXPATH, 240)
+                notEligibleTableNextButton = GetXPATHElement(notEligibleTableNextXPATH)
             else:
                 break
 
@@ -350,14 +380,20 @@ def Update(grad_year = None, wisuda = None):
         daftarCalonTableNextXPATH = "//li[@id='example_next']//a[contains(text(),'Selanjutnya')]"
         daftarCalonDisableNextXPath = "//li[@class='paginate_button next disabled' and @id='example_next']"
         tBodyXPATH = "//table[@id='example']//tbody"
-        daftarCalonTableNextButton = GetXPATHElement(daftarCalonTableNextXPATH, 10)
+
+        try:
+            daftarCalonTableNextButton = GetXPATHElement(daftarCalonTableNextXPATH)
+        except TimeoutException as err:
+            print(f"[WARNING] Could not find (step 4): {daftarCalonTableNextButton}")
+            ClickXPATH(backXPath)
+            continue
 
         while True:
-            TBodyElement = GetXPATHElement(tBodyXPATH, 10)
+            TBodyElement = GetXPATHElement(tBodyXPATH)
             daftarCalonData += TBodyElement.get_attribute("innerHTML")
-            if len(driver.find_elements_by_xpath(daftarCalonDisableNextXPath)) == 0:
+            if len(GetXPATHElements(daftarCalonDisableNextXPath)) == 0:
                 daftarCalonTableNextButton.click()
-                daftarCalonTableNextButton = GetXPATHElement(daftarCalonTableNextXPATH, 10)
+                daftarCalonTableNextButton = GetXPATHElement(daftarCalonTableNextXPATH)
             else:
                 break
 
@@ -389,18 +425,24 @@ def Update(grad_year = None, wisuda = None):
         print("[INFO]: Start Processing Nomor Ijazah Data")
         prosesIjazahXPath = "//input[@class='btn btn-primary btn-rounded text-center']"
 
-        if ClickXPATH(prosesIjazahXPath, 10) is True:
+        if ClickXPATH(prosesIjazahXPath) is True:
             nomorIjazahData = ""
             nomorIjazahTableNextXPATH = "//li[@id='DataTables_Table_0_next']//a[contains(text(),'Selanjutnya')]"
             nomorIjazahTableNextCSSSelector = ".paginate_button.next.disabled"
             tBodyXPATH = "//table[@id='DataTables_Table_0']//tbody"
-            nomorIjazahTableNextButton = GetXPATHElement(nomorIjazahTableNextXPATH, 10)
+            try:
+                nomorIjazahTableNextButton = GetXPATHElement(nomorIjazahTableNextXPATH)
+            except TimeoutException:
+                print(f"[WARNING] Could not find (step 5): {nomorIjazahTableNextXPATH}")
+                driver.get("https://pin.kemdikbud.go.id/pin/index.php/prodi")
+                continue
+
             while True:
-                TBodyElement = GetXPATHElement(tBodyXPATH, 10)
-                nomorIjazahData += TBodyElement.get_attribute("innerHTML")
-                if len(driver.find_elements_by_css_selector(nomorIjazahTableNextCSSSelector)) == 0:
+                TBodyElement = GetXPATHElement(tBodyXPATH)
+                nomorIjazahData += TBodyElement.get_attribute("innerHTML")         
+                if len(GetCSSElements(nomorIjazahTableNextCSSSelector)) == 0:
                     nomorIjazahTableNextButton.click()
-                    nomorIjazahTableNextButton = GetXPATHElement(nomorIjazahTableNextXPATH, 10)
+                    nomorIjazahTableNextButton = GetXPATHElement(nomorIjazahTableNextXPATH)
                 else:
                     break
 
@@ -427,10 +469,10 @@ def Update(grad_year = None, wisuda = None):
 
             try:
                 PengajuanNomorIjazahXPATH = "//button[contains(text(),'Akhiri Pengajuan Nomor Ijazah')]"
-                ClickXPATH(PengajuanNomorIjazahXPATH, 10)
-            except Exception:
+                ClickXPATH(PengajuanNomorIjazahXPATH)
+            except TimeoutException:
                 backXPath = "//*[@id='page-wrapper']/div[3]/div/div[1]/div/a[1]"
-                ClickXPATH(backXPath, 10)
+                ClickXPATH(backXPath)
                 continue
 
             print("[Reserved]")
@@ -455,7 +497,7 @@ def Update(grad_year = None, wisuda = None):
 
         # back to reservation point
         backXPath = "//*[@id='page-wrapper']/div[3]/div/div[1]/div/a[1]"
-        ClickXPATH(backXPath, 10)
+        ClickXPATH(backXPath)
 
     cursor.execute("insert into " + FINAL_HNINA_TABLE +
                    " select *, TglBackup = GETDATE() from " + FINAL_NINA_TABLE)
@@ -464,8 +506,11 @@ def Update(grad_year = None, wisuda = None):
     cursor.execute("insert into " + FINAL_HNOT_EG_TABLE +
                    " select *, tglbackup = GETDATE() from " + FINAL_NOT_EG_TABLE)
 
+    print("[INFO] Copying table")
+    cursor.execute("EXEC " + SP_BACKUP)
     conn.commit()
     cursor.close()
+    print("[INFO] Done")
 
 
 '''
@@ -563,7 +608,7 @@ def Upload():
     print("Total Rows : ", len(prod_list))
 
     upload_XPATH = "/html/body/div[1]/div/div[3]/div/div[2]/div[2]/form/button"
-    ClickXPATH(upload_XPATH, 10)
+    ClickXPATH(upload_XPATH)
 
     for i in prod_list:
         cursor.execute("exec EXPORTPRODI ?", i[0])
@@ -576,28 +621,19 @@ def Upload():
             nim_list.append(x[0])
             nina_list.append(x[1])
 
-        # Excel work
-        book = load_workbook(r'Asset/Prodi/PIN-Template.xlsx')
-        sheet = book['Sheet1']
-
-        while sheet.max_row > 1:
-            sheet.delete_rows(2)
-
-        writer = pd.ExcelWriter(r'Asset/Prodi/PIN-Template.xlsx', engine='openpyxl')
-        writer.book = book
-        writer.sheets = dict((ws.title, ws) for ws in book.worksheets)
-        data = {'NIM': nim_list, 'PIN': nina_list}
-        df = pd.DataFrame(data)
-        df.to_excel(writer, "Sheet1", index=False)
-        writer.save()
+        file_path = "Asset/Prodi/PIN-Template.xlsx"    
+        with pd.ExcelWriter(file_path, engine='openpyxl') as writer:    
+            data = {'NIM': nim_list, 'PIN': nina_list}
+            df = pd.DataFrame(data)
+            df.to_excel(writer, sheet_name="Sheet1", index=False)
 
         # Upload
 
         search_XPATH = "//input[contains(@placeholder,'Ketik Kata Kunci')]"
-        SendXPATH(search_XPATH, 10, i[0])
+        SendXPATH(search_XPATH, i[0])
 
         try :
-            ClickXPATH("/html/body/div[1]/div/div[3]/div[1]/div[2]/div/div/div/div[2]/div/div/div[2]/div/table/tbody/tr[1]/td[4]/form/input[5]", 10)
+            ClickXPATH("/html/body/div[1]/div/div[3]/div[1]/div[2]/div/div/div/div[2]/div/div/div[2]/div/table/tbody/tr[1]/td[4]/form/input[5]")
         except :
             continue
 
@@ -610,10 +646,10 @@ def Upload():
 
         sleep(5)
         try :
-            driver.find_element_by_xpath(upload_XPATH).send_keys(file_path)
-            ClickXPATH(submit_XPATH, 10)
-            ClickXPATH(pasang_XPATH, 10)
-            ClickXPATH(back_XPATH, 120)
+            GetXPATHElement(upload_XPATH).send_keys(file_path)
+            ClickXPATH(submit_XPATH)
+            ClickXPATH(pasang_XPATH)
+            ClickXPATH(back_XPATH)
         except:
             continue
 
@@ -638,13 +674,13 @@ def UpdateArsip():
     try:
         # Menghitung jumlah tombol download
         viewXPath = "//select[@name='DataTables_Table_0_length']/option[text()='100']"
-        ClickXPATH(viewXPath, 10)
+        ClickXPATH(viewXPath)
         sleep(1)
         searchXPATH = "//input[contains(@placeholder,'Ketik Kata Kunci')]"
-        SendXPATH(searchXPATH, 10, tanggalBatch)
+        SendXPATH(searchXPATH, tanggalBatch)
         sleep(1)
         btnCssSelector = ".btn.btn-success"
-        buttons = SelectCSS(btnCssSelector, 10)
+        buttons = SelectCSS(btnCssSelector)
         buttonLength = len(buttons)
 
         ProgressBar(0, buttonLength, prefix='Progress:', suffix='Complete', length=50)
@@ -655,16 +691,16 @@ def UpdateArsip():
             ProgressBar(i + 1, buttonLength, prefix='Progress:', suffix='Complete', length=50)
 
             viewXPath = "//select[@name='DataTables_Table_0_length']/option[text()='100']"
-            if ClickXPATH(viewXPath, 10):
+            if ClickXPATH(viewXPath):
                 searchXPATH = "//input[contains(@placeholder,'Ketik Kata Kunci')]"
-                SendXPATH(searchXPATH, 10, tanggalBatch)
+                SendXPATH(searchXPATH, tanggalBatch)
 
             batchCodeXPATH = "/html/body/div[1]/div/div[3]/div[1]/div/div/div/div/div[2]/div/div/div[2]/div/table/tbody/tr[" + str(
                 i + 1) + "]/td[2]"
-            batchCode = GetXPATHElement(batchCodeXPATH, 10).text
+            batchCode = GetXPATHElement(batchCodeXPATH).text
             dstring = batchCode[0:13]
             sleep(1)
-            operationButton = driver.find_elements_by_css_selector(btnCssSelector)
+            operationButton = SelectCSS(btnCssSelector)
             operationButton[i].click()
             sleep(5)
 
@@ -688,7 +724,7 @@ def UpdateArsip():
                 cursor.execute(query)
                 conn.commit()
 
-    except Exception as e:
+    except TimeoutException as e:
         print("[INFO] No Data...")
         print(e)
 
@@ -743,7 +779,7 @@ def Job():
     driver.get('https://pin.kemdikbud.go.id/pin/index.php/login')
     buttonXPATH = "//button[@class='btn-login btn-primary-login block-login full-width-login m-b']"
     loginStatus = GetXPATHElements(buttonXPATH)
-    print("Login status: ", loginStatus)
+    # print("Login status: ",  "OK" if len(loginStatus) > 0  else "FAILED/ALREADY LOGIN")
     if len(GetXPATHElements(buttonXPATH)) > 0:
         print("Logging in..")
         Login()   
@@ -857,6 +893,7 @@ def Mainmenu(homepage = True):
             elif(index == "6"):
                 Job()
                 choose = False
+                input("Press Enter to Continue...")
 
 
 '''
@@ -880,8 +917,10 @@ def UpdatePINMenu():
 
         if(index == "1"):
             Reset()
+            Homepage()
         elif(index == "2"):
             Update()
+            Homepage()
         #elif(index == "3"):
         #    Validator()
         elif(index == "3"):
